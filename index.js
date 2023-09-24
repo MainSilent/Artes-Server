@@ -9,8 +9,8 @@ const PORT = 443
 let isAuth = false
 
 const tls_options = {
-  key: fs.readFileSync('cert/key.pem'),
-  cert: fs.readFileSync('cert/pub.pem')
+  key: fs.readFileSync('cert/server.key'),
+  cert: fs.readFileSync('cert/server.crt')
 }
 
 execSync(`./setup_interface.sh artes "10.31.0.1"`)
