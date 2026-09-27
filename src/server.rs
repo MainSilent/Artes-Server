@@ -5,6 +5,7 @@ use tokio::io::AsyncReadExt;
 use tokio::net::TcpListener;
 use tokio_rustls::TlsAcceptor;
 use std::sync::Arc;
+use tokio::sync::Semaphore;
 use tokio_rustls::rustls::{
     pki_types::{CertificateDer, PrivateKeyDer},
     ServerConfig,
@@ -19,10 +20,15 @@ pub async fn start_server() -> tokio::io::Result<()> {
 
     println!("TLS server listening on 0.0.0.0:443");
 
+    // for this current version I'm only allowing one user
+    let is_already_connected = Arc::new(Semaphore::new(1));
+
     loop {
         let (stream, addr) = listener.accept().await?;
 
         let acceptor = acceptor.clone();
+
+        let is_already_connected = is_already_connected.clone();
 
         tokio::spawn(async move {
             match acceptor.accept(stream).await {
@@ -38,7 +44,15 @@ pub async fn start_server() -> tokio::io::Result<()> {
                                 break;
                             }
                             Ok(_) => {
-                                // process client data here
+                                let permit = is_already_connected.try_acquire_owned();
+                                if permit.is_err() {
+                                    println!("Another client is already connected: {}", addr);
+                                    let _ = client.shutdown().await;
+                                    return;
+                                }
+                                let _permit = permit.unwrap();
+
+                                // process client data
                             }
                             Err(e) => {
                                 eprintln!("Client error {}: {}", addr, e);
