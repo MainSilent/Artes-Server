@@ -1,6 +1,34 @@
 use std::process::Command;
-use std::io;
+use std::{io, os::fd::RawFd};
 use crate::utils::{ sh };
+
+
+pub fn get_tunnel_fd(name: &str) -> io::Result<RawFd> {
+    let fd = unsafe { libc::open(b"/dev/net/tun\0".as_ptr() as _, libc::O_RDWR) };
+
+    if fd < 0 {
+        return Err(io::Error::last_os_error());
+    }
+
+    let mut ifr = unsafe { std::mem::zeroed::<libc::ifreq>() };
+
+    for (dst, src) in ifr.ifr_name.iter_mut().zip(name.bytes()) {
+        *dst = src as i8;
+    }
+
+    unsafe {
+        ifr.ifr_ifru.ifru_flags = (libc::IFF_TUN | libc::IFF_NO_PI) as i16;
+
+        if libc::ioctl(fd, libc::TUNSETIFF as _, &mut ifr) < 0 {
+            let e = io::Error::last_os_error();
+            libc::close(fd);
+            return Err(e);
+        }
+    }
+
+    Ok(fd)
+}
+
 
 pub fn create_tunnel_interface(name: &str, ip: &str) -> io::Result<()> {
     let nic = Command::new("sh")

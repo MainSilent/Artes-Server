@@ -4,6 +4,7 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
+libc = "0.2.189"
 dotenvy = "0.15.7"
 rcgen = "0.14"
 rustls-pemfile = "2.2.0"
