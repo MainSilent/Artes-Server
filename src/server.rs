@@ -11,7 +11,7 @@ use tokio_rustls::rustls::{
 
 
 pub async fn start_server() -> tokio::io::Result<()> {
-    let listener = TcpListener::bind("0.0.0.0:4433").await?;
+    let listener = TcpListener::bind("0.0.0.0:443").await?;
 
     let cert = load_tls_config();
     let acceptor = TlsAcceptor::from(Arc::new(cert));
