@@ -29,7 +29,7 @@ pub async fn start_server() -> tokio::io::Result<()> {
                 Ok(mut tls_stream) => {
                     println!("Client connected: {}", addr);
 
-                    let mut buf = [0u8; 1024];
+                    let mut buf = [0u8; 4096];
 
                     loop {
                         match tls_stream.read(&mut buf).await {
