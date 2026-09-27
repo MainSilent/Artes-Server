@@ -17,6 +17,10 @@ pub fn create_tunnel(name: &str, ip: &str) -> io::Result<()> {
     let dns = String::from_utf8_lossy(&dns.stdout).trim().to_string();
 
     sh(&format!(r#"
+        if ip link show {name} >/dev/null 2>&1; then
+            exit 0
+        fi
+
         ip tuntap del {name} mode tun 2>/dev/null || true
         ip tuntap add {name} mode tun
         ip link set {name} up
