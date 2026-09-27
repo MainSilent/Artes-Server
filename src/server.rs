@@ -1,7 +1,7 @@
 use std::fs::File;
 use std::io::{BufReader, Read};
 
-use tokio::io::AsyncReadExt;
+use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use tokio::net::TcpListener;
 use tokio_rustls::TlsAcceptor;
 use std::sync::Arc;
@@ -33,6 +33,15 @@ pub async fn start_server() -> tokio::io::Result<()> {
         tokio::spawn(async move {
             match acceptor.accept(stream).await {
                 Ok(mut client) => {
+                    // Check if a client already is connected
+                    let permit = is_already_connected.try_acquire_owned();
+                    if permit.is_err() {
+                        println!("Another client is already connected: {}", addr);
+                        let _ = client.shutdown().await;
+                        return;
+                    }
+                    let _permit = permit.unwrap();
+
                     println!("Client connected: {}", addr);
 
                     let mut buf = [0u8; 4096];
@@ -44,14 +53,6 @@ pub async fn start_server() -> tokio::io::Result<()> {
                                 break;
                             }
                             Ok(_) => {
-                                let permit = is_already_connected.try_acquire_owned();
-                                if permit.is_err() {
-                                    println!("Another client is already connected: {}", addr);
-                                    let _ = client.shutdown().await;
-                                    return;
-                                }
-                                let _permit = permit.unwrap();
-
                                 // process client data
                             }
                             Err(e) => {
