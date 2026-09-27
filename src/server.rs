@@ -16,7 +16,7 @@ pub async fn start_server() -> tokio::io::Result<()> {
     let cert = load_tls_config();
     let acceptor = TlsAcceptor::from(Arc::new(cert));
 
-    println!("TLS server listening on 0.0.0.0:4433");
+    println!("TLS server listening on 0.0.0.0:443");
 
     loop {
         let (stream, addr) = listener.accept().await?;
