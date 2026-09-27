@@ -1,13 +1,46 @@
+use std::fs::File;
+use std::io::{BufReader, Read};
+
+use tokio::net::TcpListener;
+use tokio_rustls::TlsAcceptor;
+use std::sync::Arc;
 use tokio_rustls::rustls::{
     pki_types::{CertificateDer, PrivateKeyDer},
     ServerConfig,
 };
 
-use std::fs::File;
-use std::io::{BufReader, Read};
+
+pub async fn start_server() -> tokio::io::Result<()> {
+    let listener = TcpListener::bind("0.0.0.0:4433").await?;
+
+    let cert = load_tls_config();
+    let acceptor = TlsAcceptor::from(Arc::new(cert));
+
+    println!("TLS server listening on 0.0.0.0:4433");
+
+    loop {
+        let (stream, addr) = listener.accept().await?;
+
+        let acceptor = acceptor.clone();
+
+        tokio::spawn(async move {
+            match acceptor.accept(stream).await {
+                Ok(_tls_stream) => {
+                    println!("Client connected: {}", addr);
+
+                    // proces client
+                }
+
+                Err(e) => {
+                    eprintln!("TLS error from {}: {}", addr, e);
+                }
+            }
+        });
+    }
+}
 
 
-fn load_tls_config() -> ServerConfig {
+pub fn load_tls_config() -> ServerConfig {
     let cert_file = &mut BufReader::new(
         File::open("cert/server.crt").unwrap()
     );

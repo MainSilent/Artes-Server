@@ -2,6 +2,7 @@ mod auth;
 mod cert;
 mod tun;
 mod utils;
+mod server;
 
 
 use std::process;
@@ -11,9 +12,11 @@ use auth::{
     read_auth
 };
 use tun::{ create_tunnel };
+use server::{ start_server };
 
 
-fn main() {
+#[tokio::main]
+async fn main() {
     check_certificate().unwrap();
     let auth : Auth = read_auth().unwrap();
 
@@ -25,5 +28,5 @@ fn main() {
         }
     }
     
-    println!("Hello, world!");
+    start_server().await.unwrap();
 }
