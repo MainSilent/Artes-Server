@@ -1,6 +1,7 @@
 use std::fs::File;
 use std::io::{BufReader, Read};
 
+use tokio::io::AsyncReadExt;
 use tokio::net::TcpListener;
 use tokio_rustls::TlsAcceptor;
 use std::sync::Arc;
@@ -25,12 +26,27 @@ pub async fn start_server() -> tokio::io::Result<()> {
 
         tokio::spawn(async move {
             match acceptor.accept(stream).await {
-                Ok(_tls_stream) => {
+                Ok(mut tls_stream) => {
                     println!("Client connected: {}", addr);
 
-                    // proces client
-                }
+                    let mut buf = [0u8; 1024];
 
+                    loop {
+                        match tls_stream.read(&mut buf).await {
+                            Ok(0) => {
+                                println!("Client disconnected: {}", addr);
+                                break;
+                            }
+                            Ok(_) => {
+                                // process client data here
+                            }
+                            Err(e) => {
+                                eprintln!("Client error {}: {}", addr, e);
+                                break;
+                            }
+                        }
+                    }
+                }
                 Err(e) => {
                     eprintln!("TLS error from {}: {}", addr, e);
                 }
