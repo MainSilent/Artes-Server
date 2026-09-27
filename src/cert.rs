@@ -4,8 +4,8 @@ use std::path::Path;
 
 
 pub fn check_certificate() -> io::Result<()> {
-    let cert_path = Path::new("cert/certificate.pem");
-    let key_path = Path::new("cert/private_key.pem");
+    let cert_path = Path::new("cert/server.crt");
+    let key_path = Path::new("cert/server.key");
 
     // Both already exist
     if cert_path.exists() && key_path.exists() {
