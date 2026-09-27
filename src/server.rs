@@ -26,13 +26,13 @@ pub async fn start_server() -> tokio::io::Result<()> {
 
         tokio::spawn(async move {
             match acceptor.accept(stream).await {
-                Ok(mut tls_stream) => {
+                Ok(mut client) => {
                     println!("Client connected: {}", addr);
 
                     let mut buf = [0u8; 4096];
 
                     loop {
-                        match tls_stream.read(&mut buf).await {
+                        match client.read(&mut buf).await {
                             Ok(0) => {
                                 println!("Client disconnected: {}", addr);
                                 break;
