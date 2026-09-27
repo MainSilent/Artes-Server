@@ -32,8 +32,6 @@ async fn main() {
     }
 
     let tun_fd = tun::get_tunnel_fd(INTERFACE_NAME).unwrap();
-
-    println!("id: {}", tun_fd);
     
     start_server().await.unwrap();
 }
