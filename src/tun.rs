@@ -2,7 +2,7 @@ use std::process::Command;
 use std::io;
 use crate::utils::{ sh };
 
-pub fn create_tunnel(name: &str, ip: &str) -> io::Result<()> {
+pub fn create_tunnel_interface(name: &str, ip: &str) -> io::Result<()> {
     let nic = Command::new("sh")
         .arg("-c")
         .arg("ip -4 route | grep default | grep -Po '(?<=dev )\\S+' | head -1")

@@ -11,7 +11,7 @@ use auth::{
     Auth,
     read_auth
 };
-use tun::{ create_tunnel };
+use tun::{ create_tunnel_interface };
 use server::{ start_server };
 
 
@@ -20,7 +20,7 @@ async fn main() {
     check_certificate().unwrap();
     let auth : Auth = read_auth().unwrap();
 
-    match create_tunnel("Artes", "10.31.0.1") {
+    match create_tunnel_interface("Artes", "10.31.0.1") {
         Ok(_) => println!("Tunnel started successfully"),
         Err(e) => {
             eprintln!("Tunnel failed: {}", e);
