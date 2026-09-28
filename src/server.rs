@@ -11,6 +11,8 @@ use tokio_rustls::rustls::{
     ServerConfig,
 };
 
+use crate::tun::{ tun_write };
+
 
 pub async fn start_server(tun_fd: i32) -> tokio::io::Result<()> {
     let listener = TcpListener::bind("0.0.0.0:443").await?;
@@ -52,8 +54,11 @@ pub async fn start_server(tun_fd: i32) -> tokio::io::Result<()> {
                                 println!("Client disconnected: {}", addr);
                                 break;
                             }
-                            Ok(_) => {
-                                // process client data
+                            Ok(n) => {
+                                let data = buf[..n].to_vec();
+                                tokio::task::spawn_blocking(move || {
+                                    tun_write(tun_fd, &data).unwrap();
+                                });
                             }
                             Err(e) => {
                                 eprintln!("Client error {}: {}", addr, e);
