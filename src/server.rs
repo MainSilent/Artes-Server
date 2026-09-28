@@ -14,6 +14,7 @@ use tokio_rustls::rustls::{
     ServerConfig,
 };
 
+use crate::auth::authenticate;
 use crate::tun::{ tun_write, tun_read };
 
 
@@ -112,11 +113,29 @@ pub async fn start_server(tun_fd: i32) -> tokio::io::Result<()> {
                             }
 
                             Ok(n) => {
-                                let data = buf[..n].to_vec();
+                                if !is_auth.load(Ordering::Acquire) {
+                                    if authenticate(&buf[..n]) {
+                                        is_auth.store(true, Ordering::Release);
 
-                                tokio::task::spawn_blocking(move || {
-                                    tun_write(tun_fd, &data).unwrap();
-                                });
+                                        println!("Client authenticated: {}", addr);
+
+                                        // Send authentication success ip
+                                        writer.write_all(&[100, 10, 31, 0, 2]).await;
+                                    } else {
+                                        // Send authentication failure
+                                        writer.write_all(&[99]).await;
+                                        writer.shutdown().await;
+
+                                        tun_to_client.abort();
+                                        break;
+                                    }
+                                } else {
+                                    let data = buf[..n].to_vec();
+
+                                    tokio::task::spawn_blocking(move || {
+                                        tun_write(tun_fd, &data).unwrap();
+                                    });
+                                }
                             }
 
                             Err(e) => {
