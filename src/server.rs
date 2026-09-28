@@ -8,7 +8,7 @@ use std::sync::{
     Arc,
     atomic::{AtomicBool, Ordering},
 };
-use tokio::sync::Semaphore;
+use tokio::sync::{Mutex, Semaphore};
 use tokio_rustls::rustls::{
     pki_types::{CertificateDer, PrivateKeyDer},
     ServerConfig,
@@ -59,9 +59,11 @@ pub async fn start_server(tun_fd: i32) -> tokio::io::Result<()> {
                     println!("Client connected: {}", addr);
 
                     // Split client into reader and writer
-                    let (mut reader, mut writer) = tokio::io::split(client);
+                    let (mut reader, writer) = tokio::io::split(client);
+                    let writer = Arc::new(Mutex::new(writer));
 
                     // TUN to Client
+                    let writer_tun = writer.clone();
                     let tun_to_client = tokio::spawn(async move {
                         loop {
                             // Don't read from TUN until client is authenticated
@@ -94,6 +96,7 @@ pub async fn start_server(tun_fd: i32) -> tokio::io::Result<()> {
                                 }
                             };
 
+                            let mut writer = writer_tun.lock().await;
                             if let Err(e) = writer.write_all(&buf[..n]).await {
                                 eprintln!("Client disconnected: {}", e);
                                 break;
@@ -102,6 +105,7 @@ pub async fn start_server(tun_fd: i32) -> tokio::io::Result<()> {
                     });
 
                     // Client to TUN
+                    let writer_tun = writer.clone();
                     let mut buf = [0u8; BUFFER_SIZE];
 
                     loop {
@@ -120,9 +124,12 @@ pub async fn start_server(tun_fd: i32) -> tokio::io::Result<()> {
                                         println!("Client authenticated: {}", addr);
 
                                         // Send authentication success ip
+                                        let mut writer = writer.lock().await;
                                         writer.write_all(&[100, 10, 31, 0, 2]).await;
                                     } else {
                                         // Send authentication failure
+                                        let mut writer = writer.lock().await;
+
                                         writer.write_all(&[99]).await;
                                         writer.shutdown().await;
 
