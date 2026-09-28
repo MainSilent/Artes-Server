@@ -105,7 +105,6 @@ pub async fn start_server(tun_fd: i32) -> tokio::io::Result<()> {
                     });
 
                     // Client to TUN
-                    let writer_tun = writer.clone();
                     let mut buf = [0u8; BUFFER_SIZE];
 
                     loop {
