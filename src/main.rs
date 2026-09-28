@@ -22,7 +22,7 @@ const IP_RANGE : &str = "10.31.0.1";
 #[tokio::main]
 async fn main() {
     check_certificate().unwrap();
-    let auth : Auth = read_auth().unwrap();
+    read_auth().unwrap();
 
     match create_tunnel_interface(INTERFACE_NAME, IP_RANGE) {
         Ok(_) => println!("Tunnel started successfully"),

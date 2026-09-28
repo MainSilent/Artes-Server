@@ -20,3 +20,18 @@ pub fn read_auth() -> io::Result<Auth> {
         password,
     })
 }
+
+pub fn authenticate(data: &[u8]) -> bool {
+    let auth = match read_auth() {
+        Ok(auth) => auth,
+        Err(_) => return false,
+    };
+
+    let credentials = String::from_utf8_lossy(data);
+    let mut parts = credentials.split('\0');
+
+    let username = parts.next().unwrap_or("");
+    let password = parts.next().unwrap_or("");
+
+    username == auth.username && password == auth.password
+}
