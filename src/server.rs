@@ -46,6 +46,9 @@ pub async fn start_server(tun_fd: i32) -> tokio::io::Result<()> {
                         return;
                     }
                     let _permit = permit.unwrap();
+                    
+                    // Ack to send username and password
+                    client.write_all(&[1u8]).await;
 
                     println!("Client connected: {}", addr);
 
