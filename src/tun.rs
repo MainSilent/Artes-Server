@@ -6,24 +6,28 @@ use crate::utils::{ sh };
 
 
 pub fn tun_read(tun_fd: RawFd, buf: &mut [u8]) -> io::Result<usize> {
-    let mut tun = unsafe { File::from_raw_fd(tun_fd) };
+    let result = unsafe { libc::read(tun_fd, buf.as_mut_ptr() as *mut libc::c_void, buf.len()) };
 
-    let result = tun.read(buf);
-
-    std::mem::forget(tun);
-
-    result
+    if result < 0 {
+        Err(io::Error::last_os_error())
+    } else {
+        Ok(result as usize)
+    }
 }
 
-
 pub fn tun_write(tun_fd: RawFd, buf: &[u8]) -> io::Result<()> {
-    let mut tun = unsafe { File::from_raw_fd(tun_fd) };
+    let result = unsafe { libc::write(tun_fd, buf.as_ptr() as *const libc::c_void, buf.len()) };
 
-    tun.write_all(buf)?;
-
-    std::mem::forget(tun);
-
-    Ok(())
+    if result < 0 {
+        Err(io::Error::last_os_error())
+    } else if result != buf.len() as isize {
+        Err(io::Error::new(
+            io::ErrorKind::WriteZero,
+            "partial TUN write",
+        ))
+    } else {
+        Ok(())
+    }
 }
 
 
