@@ -1,8 +1,19 @@
 use std::process::Command;
-use std::{io, os::fd::RawFd, io::Write};
+use std::{io, os::fd::RawFd, io::Write, io::Read};
 use std::fs::File;
 use std::os::fd::FromRawFd;
 use crate::utils::{ sh };
+
+
+pub fn tun_read(tun_fd: RawFd, buf: &mut [u8]) -> io::Result<usize> {
+    let mut tun = unsafe { File::from_raw_fd(tun_fd) };
+
+    let result = tun.read(buf);
+
+    std::mem::forget(tun);
+
+    result
+}
 
 
 pub fn tun_write(tun_fd: RawFd, buf: &[u8]) -> io::Result<()> {
