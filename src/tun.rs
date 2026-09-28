@@ -1,6 +1,19 @@
 use std::process::Command;
-use std::{io, os::fd::RawFd};
+use std::{io, os::fd::RawFd, io::Write};
+use std::fs::File;
+use std::os::fd::FromRawFd;
 use crate::utils::{ sh };
+
+
+pub fn tun_write(tun_fd: RawFd, buf: &[u8]) -> io::Result<()> {
+    let mut tun = unsafe { File::from_raw_fd(tun_fd) };
+
+    tun.write_all(buf)?;
+
+    std::mem::forget(tun);
+
+    Ok(())
+}
 
 
 pub fn get_tunnel_fd(name: &str) -> io::Result<RawFd> {
