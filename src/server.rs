@@ -4,7 +4,10 @@ use std::io::{BufReader, Read};
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use tokio::net::TcpListener;
 use tokio_rustls::TlsAcceptor;
-use std::sync::Arc;
+use std::sync::{
+    Arc,
+    atomic::{AtomicBool, Ordering},
+};
 use tokio::sync::Semaphore;
 use tokio_rustls::rustls::{
     pki_types::{CertificateDer, PrivateKeyDer},
@@ -46,6 +49,8 @@ pub async fn start_server(tun_fd: i32) -> tokio::io::Result<()> {
                         return;
                     }
                     let _permit = permit.unwrap();
+                    let is_auth = Arc::new(AtomicBool::new(false));
+                    let is_auth_tun = is_auth.clone();
                     
                     // Ack to send username and password
                     client.write_all(&[1u8]).await;
@@ -58,6 +63,13 @@ pub async fn start_server(tun_fd: i32) -> tokio::io::Result<()> {
                     // TUN to Client
                     let tun_to_client = tokio::spawn(async move {
                         loop {
+                            // Don't read from TUN until client is authenticated
+                            if !is_auth_tun.load(Ordering::Acquire) {
+                                tokio::time::sleep(std::time::Duration::from_millis(10)).await;
+                                continue;
+                            }
+
+                            // Start Reading from tun and write to client
                             let result = tokio::task::spawn_blocking(move || {
                                 let mut buf = [0u8; BUFFER_SIZE];
 
