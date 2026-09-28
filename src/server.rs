@@ -139,7 +139,9 @@ pub async fn start_server(tun_fd: i32) -> tokio::io::Result<()> {
                                     let data = buf[..n].to_vec();
 
                                     tokio::task::spawn_blocking(move || {
-                                        tun_write(tun_fd, &data).unwrap();
+                                        if let Err(e) = tun_write(tun_fd, &data) {
+                                            eprintln!("TUN write error: {}", e);
+                                        }
                                     });
                                 }
                             }
