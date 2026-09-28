@@ -11,7 +11,10 @@ use tokio_rustls::rustls::{
     ServerConfig,
 };
 
-use crate::tun::{ tun_write };
+use crate::tun::{ tun_write, tun_read };
+
+
+const BUFFER_SIZE : usize = 4096;
 
 
 pub async fn start_server(tun_fd: i32) -> tokio::io::Result<()> {
@@ -46,22 +49,64 @@ pub async fn start_server(tun_fd: i32) -> tokio::io::Result<()> {
 
                     println!("Client connected: {}", addr);
 
-                    let mut buf = [0u8; 4096];
+                    // Split client into reader and writer
+                    let (mut reader, mut writer) = tokio::io::split(client);
 
-                    loop {
-                        match client.read(&mut buf).await {
-                            Ok(0) => {
-                                println!("Client disconnected: {}", addr);
+                    // TUN to Client
+                    let tun_to_client = tokio::spawn(async move {
+                        loop {
+                            let result = tokio::task::spawn_blocking(move || {
+                                let mut buf = [0u8; BUFFER_SIZE];
+
+                                let n = tun_read(tun_fd, &mut buf)?;
+
+                                Ok::<_, std::io::Error>((buf, n))
+                            })
+                            .await;
+
+                            let (buf, n) = match result {
+                                Ok(Ok(data)) => data,
+
+                                Ok(Err(e)) => {
+                                    eprintln!("TUN read error: {}", e);
+                                    break;
+                                }
+
+                                Err(e) => {
+                                    eprintln!("TUN task error: {}", e);
+                                    break;
+                                }
+                            };
+
+                            if let Err(e) = writer.write_all(&buf[..n]).await {
+                                eprintln!("Client disconnected: {}", e);
                                 break;
                             }
+                        }
+                    });
+
+                    // Client to TUN
+                    let mut buf = [0u8; BUFFER_SIZE];
+
+                    loop {
+                        match reader.read(&mut buf).await {
+                            Ok(0) => {
+                                println!("Client disconnected: {}", addr);
+                                tun_to_client.abort();
+                                break;
+                            }
+
                             Ok(n) => {
                                 let data = buf[..n].to_vec();
+
                                 tokio::task::spawn_blocking(move || {
                                     tun_write(tun_fd, &data).unwrap();
                                 });
                             }
+
                             Err(e) => {
                                 eprintln!("Client error {}: {}", addr, e);
+                                tun_to_client.abort();
                                 break;
                             }
                         }
